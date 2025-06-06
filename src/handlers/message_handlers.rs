@@ -6,6 +6,7 @@ use uuid::Uuid;
 use crate::model::message::{Event, GetViewResponse, Message, Payload, PostResponse};
 use crate::services::message_service::MessageService;
 
+
 pub async fn produce_message(service: web::Data<MessageService>, payload: web::Json<Event>) -> impl Responder {
     match service.produce_message(payload.into_inner()).await {
         Ok(message) => 
