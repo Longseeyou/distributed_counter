@@ -1,0 +1,101 @@
+networks:
+  backend-net:
+    driver: bridge
+
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.3
+    container_name: zookeeper
+    ports:
+      - 2181:2181
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - backend-net
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.3
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - 9092:9092
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://192.168.0.175:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    networks:
+      - backend-net
+
+  kafdrop:
+    image: obsidiandynamics/kafdrop
+    container_name: kafdrop
+    ports:
+      - 9000:9000
+    environment:
+      KAFKA_BROKER_CONNECT: 192.168.0.175:9092
+      JVM_OPTS: "-Xms32M -Xmx64M"
+    networks:
+      - backend-net
+
+  scylla-node1:
+    image: scylladb/scylla:latest
+    container_name: scylla-node1
+    ports:
+      - "9042:9042"
+      - "9160:9160"
+      - "10000:10000"
+    command: --seeds=scylla-node1 --smp=1 --memory=750M --overprovisioned=1 --api-address=0.0.0.0 --listen-address=0.0.0.0 --rpc-address=0.0.0.0 --broadcast-address=scylla-node1 --broadcast-rpc-address=scylla-node1
+    networks:
+      - backend-net
+    healthcheck:
+      test: ["CMD-SHELL", "nodetool status"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+  scylla-node2:
+    image: scylladb/scylla:latest
+    container_name: scylla-node2
+    ports:
+      - "9043:9042"
+      - "9161:9160"
+      - "10001:10000"
+    command: --seeds=scylla-node1 --smp=1 --memory=750M --overprovisioned=1 --api-address=0.0.0.0 --listen-address=0.0.0.0 --rpc-address=0.0.0.0 --broadcast-address=scylla-node2 --broadcast-rpc-address=scylla-node2
+    networks:
+      - backend-net
+    depends_on:
+      scylla-node1:
+        condition: service_healthy
+
+  scylla-node3:
+    image: scylladb/scylla:latest
+    container_name: scylla-node3
+    ports:
+      - "9044:9042"
+      - "9162:9160"
+      - "10002:10000"
+    command: --seeds=scylla-node1 --smp=1 --memory=750M --overprovisioned=1 --api-address=0.0.0.0 --listen-address=0.0.0.0 --rpc-address=0.0.0.0 --broadcast-address=scylla-node3 --broadcast-rpc-address=scylla-node3
+    networks:
+      - backend-net
+    depends_on:
+      scylla-node1:
+        condition: service_healthy
+
+  scylla-node4:
+    image: scylladb/scylla:latest
+    container_name: scylla-node4
+    ports:
+      - "9045:9042"
+      - "9163:9160"
+      - "10003:10000"
+    command: --seeds=scylla-node1 --smp=1 --memory=750M --overprovisioned=1 --api-address=0.0.0.0 --listen-address=0.0.0.0 --rpc-address=0.0.0.0 --broadcast-address=scylla-node4 --broadcast-rpc-address=scylla-node4
+    networks:
+      - backend-net
+    depends_on:
+      scylla-node1:
+        condition: service_healthy
+ 
